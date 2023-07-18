@@ -78,6 +78,8 @@ int audio_2p_mode                        = 0;
 bool already_checked_options             = false;
 bool libretro_supports_persistent_buffer = false;
 bool libretro_supports_bitmasks          = false;
+// TODO: this malloc doesn't executes so my_av_info remains NULL at init. why?
+// something to do with static initialization in static c++ library when statically linked to C app?
 struct retro_system_av_info *my_av_info  = (retro_system_av_info*)malloc(sizeof(*my_av_info));
 
 void retro_get_system_info(struct retro_system_info *info)
@@ -114,12 +116,13 @@ void retro_get_system_av_info(struct retro_system_av_info *info)
    memcpy(my_av_info, info, sizeof(*my_av_info));
 }
 
-
-
 void retro_init(void)
 {
    unsigned level = 4;
    struct retro_log_callback log;
+
+	if (!my_av_info)
+		my_av_info = (retro_system_av_info*)malloc(sizeof(*my_av_info));
 
    if(environ_cb(RETRO_ENVIRONMENT_GET_LOG_INTERFACE, &log))
       log_cb = log.log;
@@ -130,6 +133,7 @@ void retro_init(void)
 
    if (environ_cb(RETRO_ENVIRONMENT_GET_INPUT_BITMASKS, NULL))
       libretro_supports_bitmasks = true;
+
 }
 
 void retro_deinit(void)
@@ -205,11 +209,13 @@ static void check_variables(void)
       else
          screenw *= 2;
    }
+
    my_av_info->geometry.base_width = screenw;
    my_av_info->geometry.base_height = screenh;
    my_av_info->geometry.aspect_ratio = float(screenw) / float(screenh);
 
    already_checked_options = true;
+
    environ_cb(RETRO_ENVIRONMENT_SET_GEOMETRY, my_av_info);
 
    // check whether player 1 and 2's screen placements are swapped
@@ -406,6 +412,7 @@ void retro_unload_game(void)
       }
    }
    free(my_av_info);
+   my_av_info = NULL;
    libretro_supports_persistent_buffer = false;
 }
 
